@@ -63,7 +63,7 @@ object File extends ExtensionId[FileExt] with ExtensionIdProvider {
 class FileExt(system: ExtendedActorSystem) extends IO.Extension {
   val manager: ActorRef = {
     system.asInstanceOf[ActorSystemImpl].systemActorOf(
-      props = Props(classOf[FileManager], this).withDeploy(Deploy.local),
+      props = Props(classOf[FileManager]).withDeploy(Deploy.local),
       name = "IO-FILE")
   }
 }
