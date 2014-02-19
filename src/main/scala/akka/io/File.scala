@@ -3,10 +3,8 @@ package akka.io
 import akka.actor._
 import java.nio.file.{ OpenOption, Path }
 import java.nio.file.attribute.FileAttribute
-import com.typesafe.config.Config
 import java.nio.channels.{ FileLock, CompletionHandler, AsynchronousFileChannel }
 import akka.util.ByteString
-import java.io.IOException
 import java.nio.ByteBuffer
 
 object File extends ExtensionId[FileExt] with ExtensionIdProvider {
@@ -76,13 +74,13 @@ class FileManager extends Actor {
   lazy val pool = new ThreadPoolConfigurator(poolConfig).pool
 
   override def receive = {
-    case cmd @ Open(file, openOptions, fileAttributes) ⇒
+    case cmd @ Open(file, openOptions, fileAttributes) =>
       try {
         val channel = AsynchronousFileChannel.open(file, openOptions.toSet.asJava, pool, fileAttributes: _*)
         val ref = context.actorOf(Props(classOf[FileHandler], channel))
         sender() ! Opened(ref)
       } catch {
-        case e: Exception ⇒ sender() ! CommandFailed(cmd, e)
+        case e: Exception => sender() ! CommandFailed(cmd, e)
       }
   }
 }
@@ -94,46 +92,46 @@ class FileHandler(channel: AsynchronousFileChannel) extends Actor {
   var lock: Option[FileLock] = None
 
   override def receive = {
-    case cmd @ Write(bytes, position) ⇒
+    case cmd @ Write(bytes, position) =>
       channel.write[AnyRef](bytes.asByteBuffer, position, null, new WriteCompletionHandler(sender(), cmd))
 
-    case cmd @ Read(size, position) ⇒
+    case cmd @ Read(size, position) =>
       val dst = ByteBuffer.allocate(size)
       channel.read[AnyRef](dst, position, null, new ReadCompletionHandler(sender(), dst, cmd))
 
-    case GetSize ⇒
+    case GetSize =>
       try {
         sender() ! Size(channel.size())
       } catch {
-        case e: Exception ⇒ sender() ! CommandFailed(GetSize, e)
+        case e: Exception => sender() ! CommandFailed(GetSize, e)
       }
 
-    case cmd @ Force(metaData) ⇒
+    case cmd @ Force(metaData) =>
       try {
         channel.force(metaData)
         sender() ! Forced
       } catch {
-        case e: Exception ⇒ sender ! CommandFailed(cmd, e)
+        case e: Exception => sender ! CommandFailed(cmd, e)
       }
 
-    case cmd @ Truncate(size) ⇒
+    case cmd @ Truncate(size) =>
       try {
         channel.truncate(size)
         sender() ! Truncated
       } catch {
-        case e: Exception ⇒ sender() ! CommandFailed(cmd, e)
+        case e: Exception => sender() ! CommandFailed(cmd, e)
       }
 
-    case Lock ⇒ channel.lock[AnyRef](null, new LockCompletionHandler(self, sender(), Lock))
+    case Lock => channel.lock[AnyRef](null, new LockCompletionHandler(self, sender(), Lock))
 
-    case Unlock ⇒
+    case Unlock =>
       lock.foreach(_.release())
       lock = None
       sender() ! Unlocked
 
-    case FileLockAcquired(_lock) ⇒ lock = Some(_lock)
+    case FileLockAcquired(_lock) => lock = Some(_lock)
 
-    case Close ⇒
+    case Close =>
       context.stop(self)
       sender ! Closed
   }
