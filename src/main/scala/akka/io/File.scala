@@ -72,10 +72,13 @@ class FileManager extends Actor {
   import File._
   import scala.collection.JavaConverters._
 
+  val poolConfig = context.system.settings.config.getConfig("akka.io.file.executor")
+  lazy val pool = new ThreadPoolConfigurator(poolConfig).pool
+
   override def receive = {
     case cmd @ Open(file, openOptions, fileAttributes) ⇒
       try {
-        val channel = AsynchronousFileChannel.open(file, openOptions.toSet.asJava, null, fileAttributes: _*)
+        val channel = AsynchronousFileChannel.open(file, openOptions.toSet.asJava, pool, fileAttributes: _*)
         val ref = context.actorOf(Props(classOf[FileHandler], channel))
         sender() ! Opened(ref)
       } catch {
