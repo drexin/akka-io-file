@@ -10,7 +10,10 @@ import akka.util.ByteString
 import java.nio.ByteBuffer
 import org.scalatest._
 
-class FileHandlerSpec extends TestKit(ActorSystem("system")) with WordSpecLike with Matchers with ImplicitSender {
+class FileHandlerSpec extends TestKit(ActorSystem("system")) with WordSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
+
+  override def afterAll() = system.shutdown()
+
   "A FileHandler" should {
     "be able to write to a file" in new TestSetup {
       ref ! Write(ByteString(testString), 0)
@@ -30,7 +33,7 @@ class FileHandlerSpec extends TestKit(ActorSystem("system")) with WordSpecLike w
 
       ref ! Read("test".getBytes.size, 0)
 
-      expectMsg(ReadResult(ByteString(testString), testString.size))
+      expectMsg(ReadResult(ByteString(testString), testString.size, 0))
     }
 
     "be able to read from a specific position in a file" in new TestSetup {
@@ -38,7 +41,7 @@ class FileHandlerSpec extends TestKit(ActorSystem("system")) with WordSpecLike w
 
       ref ! Read(3, testString.size)
 
-      expectMsg(ReadResult(ByteString("foo"), 3))
+      expectMsg(ReadResult(ByteString("foo"), 3, 4))
     }
 
     "be able to get the size of a file" in new TestSetup {

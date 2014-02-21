@@ -43,7 +43,7 @@ object File extends ExtensionId[FileExt] with ExtensionIdProvider {
 
   case class Written(bytesWritten: Int) extends Event
 
-  case class ReadResult(bytes: ByteString, bytesRead: Int) extends Event
+  case class ReadResult(bytes: ByteString, bytesRead: Int, position: Long) extends Event
 
   case class CommandFailed(cmd: Command, cause: Throwable) extends Event
 
@@ -122,7 +122,7 @@ class FileHandler(channel: AsynchronousFileChannel) extends Actor {
         case e: Exception => sender() ! CommandFailed(cmd, e)
       }
 
-    case Lock => channel.lock[AnyRef](null, new LockCompletionHandler(self, sender(), Lock))
+    case Lock => channel.lock[AnyRef](null, new LockCompletionHandler(self, sender()))
 
     case Unlock =>
       lock.foreach(_.release())
@@ -145,18 +145,21 @@ class FileHandler(channel: AsynchronousFileChannel) extends Actor {
     override def failed(exc: Throwable, attachment: B): Unit = receiver ! CommandFailed(cmd, exc)
   }
 
-  private[this] class WriteCompletionHandler(val receiver: ActorRef, val cmd: Command) extends BasicCompletionHandler[Integer, AnyRef] {
+  private[this] class WriteCompletionHandler(val receiver: ActorRef, val cmd: Write) extends BasicCompletionHandler[Integer, AnyRef] {
     override def completed(result: Integer, attachment: AnyRef): Unit = receiver ! Written(result.intValue())
   }
 
-  private[this] class ReadCompletionHandler(val receiver: ActorRef, dst: ByteBuffer, val cmd: Command) extends BasicCompletionHandler[Integer, AnyRef] {
+  private[this] class ReadCompletionHandler(val receiver: ActorRef, dst: ByteBuffer, val cmd: Read) extends BasicCompletionHandler[Integer, AnyRef] {
     override def completed(result: Integer, attachment: AnyRef): Unit = {
+      val bytes = Array.ofDim[Byte](result.intValue())
       dst.rewind()
-      receiver ! ReadResult(ByteString(dst), result.intValue())
+      dst.get(bytes)
+      receiver ! ReadResult(ByteString(bytes), result.intValue(), cmd.position)
     }
   }
 
-  private[this] class LockCompletionHandler(fileHandler: ActorRef, val receiver: ActorRef, val cmd: Command) extends BasicCompletionHandler[FileLock, AnyRef] {
+  private[this] class LockCompletionHandler(fileHandler: ActorRef, val receiver: ActorRef) extends BasicCompletionHandler[FileLock, AnyRef] {
+    def cmd = Lock
     override def completed(result: FileLock, attachment: AnyRef): Unit = {
       fileHandler ! FileLockAcquired(result)
       receiver ! Locked
