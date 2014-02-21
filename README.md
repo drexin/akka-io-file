@@ -27,3 +27,17 @@ fileHandler.flatMap(_ ? Read(9, 0)).onSuccess {
   case ReadResult(bytes, bytesRead) => println(bytes.decodeString("utf-8"))
 }
 ```
+
+### FileSlurp
+
+A `FileSlurp` reads a whole file in chunks and sends them to the receiver in correct order.
+When the whole file has been read the `FileSlurp` sends a `FileSlurp.Done` message and shuts
+itself down.
+
+```scala
+val receiver: ActorRef = ...
+val path = java.nio.file.Paths.get(...)
+
+// chunkSize is optional and defaults to 256
+system.actorOf(Props(classOf[FileSlurp], path, receiver, 512))
+```
