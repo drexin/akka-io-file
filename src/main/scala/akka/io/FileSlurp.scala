@@ -30,6 +30,7 @@ class FileSlurp(path: Path, receiver: ActorRef, chunkSize: Int) extends Actor {
       receiver ! res
       val nextPos = currentPos + read
       if (nextPos >= size) {
+        sender() ! Close
         receiver ! FileSlurp.Done
         context.stop(self)
       } else {
