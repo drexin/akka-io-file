@@ -31,12 +31,17 @@ class FileSlurp(path: Path, receiver: ActorRef, chunkSize: Int) extends Actor {
       val nextPos = currentPos + read
       if (nextPos >= size) {
         sender() ! Close
-        receiver ! FileSlurp.Done
-        context.stop(self)
+        context.become(closing)
       } else {
         sender() ! Read(chunkSize, nextPos)
         context.become(slurping(nextPos), true)
       }
+  }
+
+  def closing: Receive = {
+    case Closed =>
+      receiver ! FileSlurp.Done
+      context.stop(self)
   }
 }
 

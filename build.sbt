@@ -6,6 +6,8 @@ version := "0.1.0-SNAPSHOT"
 
 scalaVersion := "2.10.3"
 
+parallelExecution in Test := false
+
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.0-RC3" % "compile"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-testkit" % "2.3.0-RC3" % "test"
