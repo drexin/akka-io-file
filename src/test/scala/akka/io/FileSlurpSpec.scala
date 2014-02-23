@@ -40,9 +40,4 @@ class FileSlurpSpec extends TestKit(ActorSystem("system")) with WordSpecLike wit
       expectTerminated(slurp)
     }
   }
-
-  private def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit) {
-    val p = new java.io.PrintWriter(f)
-    try { op(p) } finally { p.close() }
-  }
 }

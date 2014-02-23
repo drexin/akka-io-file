@@ -3,15 +3,19 @@ package akka.io
 import akka.actor.{ActorRef, Stash, Actor}
 import java.nio.file.Path
 import akka.util.ByteString
-import akka.io.File.{Closed, Close, Opened, Open}
+import akka.io.File._
 import java.nio.file.StandardOpenOption
+import akka.io.File.Open
+import akka.io.File.Opened
 
-class FileWriter(path: Path) extends Actor with Stash {
+class FileWriter(path: Path, append: Boolean) extends Actor with Stash {
   import context.system
   import FileWriter._
 
   var currentPos: Long = 0
   var handler: ActorRef = _
+
+  def this(path: Path) = this(path, false)
 
   override def preStart() {
     import StandardOpenOption._
@@ -22,6 +26,11 @@ class FileWriter(path: Path) extends Actor with Stash {
   def receive = {
     case Opened(_handler) =>
       handler = _handler
+      if (append) handler ! GetSize
+      else self ! Size(0)
+
+    case Size(size) =>
+      currentPos = size
       context.become(writing, true)
       unstashAll()
 

@@ -11,6 +11,7 @@ import akka.io.File.{Closed, Close, Written}
 class FileWriterSpec extends TestKit(ActorSystem("system")) with WordSpecLike with Matchers with ImplicitSender with BeforeAndAfterAll {
   override def afterAll() = {
     new java.io.File("/tmp/test-file.txt").delete()
+    new java.io.File("/tmp/test-file2.txt").delete()
     system.shutdown()
   }
 
@@ -31,6 +32,26 @@ class FileWriterSpec extends TestKit(ActorSystem("system")) with WordSpecLike wi
       expectTerminated(writer)
 
       io.Source.fromFile("/tmp/test-file.txt").mkString should be("testfoobar")
+    }
+
+    "be able append to a file" in {
+      printToFile(new java.io.File("/tmp/test-file2.txt")) { p =>
+        p.print("foobar")
+      }
+
+      val writer = system.actorOf(Props(classOf[FileWriter], Paths.get("/tmp", "test-file2.txt"), true))
+
+      watch(writer)
+
+      writer ! Write(ByteString("baz"))
+
+      expectMsg(Written(3))
+
+      writer ! Close
+      expectMsg(Closed)
+      expectTerminated(writer)
+
+      io.Source.fromFile("/tmp/test-file2.txt").mkString should be("foobarbaz")
     }
   }
 }
